@@ -1,0 +1,2012 @@
+import React, { useState } from 'react';
+import { ChevronDown, Github, Linkedin, Mail, Phone, Globe, Code2, X } from 'lucide-react';
+
+const Portfolio = () => {
+  const [currentPage, setCurrentPage] = useState('about');
+  const [expandedCode, setExpandedCode] = useState(null);
+
+  const sensors = [
+    {
+      name: 'DHT11 Temperature & Humidity Sensor',
+      type: 'Environmental',
+      description: 'Measures temperature and humidity with high accuracy. Uses capacitive humidity sensor and thermistor.',
+      workingPrinciple: 'The DHT11 uses a capacitive humidity sensor and a thermistor to measure moisture and temperature. Data is transmitted in a single serial signal.',
+      code: `import Adafruit_DHT
+import time
+
+DHT_SENSOR = Adafruit_DHT.DHT11
+DHT_PIN = 4
+
+while True:
+    humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
+    
+    if humidity is not None and temperature is not None:
+        print(f'Temp: {temperature}°C, Humidity: {humidity}%')
+    else:
+        print('Failed to retrieve data')
+    
+    time.sleep(2)`,
+      usage: 'Connect VCC to 3.3V, GND to ground, DATA to GPIO pin 4. Install Adafruit library.'
+    },
+    {
+      name: 'Fire Detection Sensor (IR Flame)',
+      type: 'Safety',
+      description: 'Detects infrared radiation emitted by flames. Can detect fires within 100cm range.',
+      workingPrinciple: 'Uses an IR photodiode that is sensitive to IR wavelengths (760nm-1100nm) emitted by flames. Outputs digital signal when flame detected.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+FLAME_PIN = 17
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(FLAME_PIN, GPIO.IN)
+
+try:
+    while True:
+        if GPIO.input(FLAME_PIN) == GPIO.LOW:
+            print('🔥 FLAME DETECTED!')
+        else:
+            print('No flame detected')
+        time.sleep(0.5)
+finally:
+    GPIO.cleanup()`,
+      usage: 'Connect to GPIO pin 17. Adjust sensitivity with potentiometer. Works best in dark environments.'
+    },
+    {
+      name: 'Ultrasonic Distance Sensor (HC-SR04)',
+      type: 'Distance',
+      description: 'Measures distance using ultrasonic waves. Range: 2cm to 400cm with ±3cm accuracy.',
+      workingPrinciple: 'Sends ultrasonic pulse and measures echo time. Distance = (Speed of Sound × Time) / 2',
+      code: `import RPi.GPIO as GPIO
+import time
+
+TRIG = 23
+ECHO = 24
+SPEED_OF_SOUND = 34300  # cm/s
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(TRIG, GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+
+def measure_distance():
+    GPIO.output(TRIG, GPIO.HIGH)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, GPIO.LOW)
+    
+    while GPIO.input(ECHO) == 0:
+        pulse_start = time.time()
+    
+    while GPIO.input(ECHO) == 1:
+        pulse_end = time.time()
+    
+    pulse_duration = pulse_end - pulse_start
+    distance = (pulse_duration * SPEED_OF_SOUND) / 2
+    return distance
+
+while True:
+    print(f'Distance: {measure_distance():.2f} cm')
+    time.sleep(1)`,
+      usage: 'Connect TRIG to GPIO 23, ECHO to GPIO 24. VCC to 5V. Add voltage divider on ECHO line.'
+    },
+    {
+      name: 'Motion Sensor (PIR)',
+      type: 'Detection',
+      description: 'Passive Infrared sensor detects motion through heat signatures. Perfect for security systems.',
+      workingPrinciple: 'Detects infrared radiation changes from moving objects. Two element detector compares heat patterns.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+MOTION_PIN = 27
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(MOTION_PIN, GPIO.IN)
+
+print('Warming up PIR sensor...')
+time.sleep(3)
+
+try:
+    while True:
+        if GPIO.input(MOTION_PIN) == GPIO.HIGH:
+            print('👁️ Motion detected!')
+        time.sleep(0.2)
+except KeyboardInterrupt:
+    GPIO.cleanup()`,
+      usage: 'Connect to GPIO 27. Takes 30-60 seconds to stabilize. Detect range: 5-7 meters.'
+    },
+    {
+      name: 'Soil Moisture Sensor',
+      type: 'Environmental',
+      description: 'Measures soil moisture level. Essential for automated irrigation systems.',
+      workingPrinciple: 'Measures conductivity between two probes. Wet soil conducts electricity better than dry soil.',
+      code: `import board
+import busio
+import analogio
+
+# Using ADS1115 ADC converter
+i2c = busio.I2C(board.SCL, board.SDA)
+
+# Read analog value
+soil_pin = analogio.AnalogIn(board.A0)
+
+def get_moisture_percentage():
+    raw_value = soil_pin.value
+    # Calibrate: dry = ~1023, wet = ~0
+    moisture = 100 - (raw_value / 1023 * 100)
+    return moisture
+
+while True:
+    moisture = get_moisture_percentage()
+    print(f'Soil Moisture: {moisture:.1f}%')
+    if moisture < 30:
+        print('⚠️ Water needed!')`,
+      usage: 'Connect to analog pin A0. Calibrate dry and wet values for accuracy. Insert probes into soil.'
+    },
+    {
+      name: 'Gas Sensor (MQ-2)',
+      type: 'Environmental',
+      description: 'Detects LPG, Smoke, Alcohol, Propane, Hydrogen. Sensitive to harmful gases.',
+      workingPrinciple: 'Metal oxide semiconductor changes resistance when exposed to gases. Higher gas concentration = lower resistance.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+GAS_ANALOG_PIN = 0  # MCP3008 channel
+import Adafruit_MCP3008
+
+mcp = Adafruit_MCP3008.MCP3008(channel=GAS_ANALOG_PIN)
+
+THRESHOLD = 400
+
+while True:
+    gas_level = mcp.read()
+    
+    if gas_level > THRESHOLD:
+        print(f'⚠️ GAS DETECTED: {gas_level}')
+        # Trigger alarm
+    else:
+        print(f'Gas level: {gas_level} (Safe)')
+    time.sleep(1)`,
+      usage: 'Connect to MCP3008 analog converter. Heat sensor before use. Needs calibration for accuracy.'
+    },
+    {
+      name: 'Light Sensor (LDR)',
+      type: 'Environmental',
+      description: 'Light-dependent resistor that changes resistance based on light intensity.',
+      workingPrinciple: 'Resistance decreases with increased light exposure. Forms RC circuit with capacitor for digital reading.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+LDR_PIN = 17
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(LDR_PIN, GPIO.IN)
+
+def measure_light():
+    GPIO.setup(LDR_PIN, GPIO.OUT)
+    GPIO.output(LDR_PIN, GPIO.LOW)
+    time.sleep(0.1)
+    
+    GPIO.setup(LDR_PIN, GPIO.IN)
+    count = 0
+    while GPIO.input(LDR_PIN) == GPIO.LOW:
+        count += 1
+    
+    return count
+
+while True:
+    light_level = measure_light()
+    brightness = 'BRIGHT' if light_level < 500 else 'DIM'
+    print(f'Light: {brightness} (Level: {light_level})')
+    time.sleep(1)`,
+      usage: 'Connect in series with 1µF capacitor. Light level inversely proportional to charging time.'
+    },
+    {
+      name: 'Pressure Sensor (BMP280)',
+      type: 'Environmental',
+      description: 'Measures atmospheric pressure and temperature. High precision barometer.',
+      workingPrinciple: 'Uses piezoelectric element to detect pressure changes. I2C interface for digital reading.',
+      code: `import board
+import busio
+import adafruit_bmp280
+
+i2c = busio.I2C(board.SCL, board.SDA)
+bmp280 = adafruit_bmp280.Adafruit_BMP280_I2C(i2c)
+
+bmp280.sea_level_pressure = 1013.25
+
+while True:
+    print(f'Temperature: {bmp280.temperature}°C')
+    print(f'Pressure: {bmp280.pressure} hPa')
+    print(f'Altitude: {bmp280.altitude} meters')
+    time.sleep(2)`,
+      usage: 'I2C address 0x77. Supply 3.3V. Popular in weather stations and altitude measurement.'
+    },
+    {
+      name: 'RFID Sensor (MFRC522)',
+      type: 'Detection',
+      description: 'Radio Frequency Identification reader. Reads RFID tags and cards wirelessly.',
+      workingPrinciple: 'Uses RF waves to energize passive tags and read their unique IDs transmitted back.',
+      code: `from mfrc522 import SimpleMFRC522
+import RPi.GPIO as GPIO
+
+reader = SimpleMFRC522()
+
+try:
+    print('Place your card...')
+    id, text = reader.read()
+    print(f'Card ID: {id}')
+    print(f'Data: {text}')
+except KeyboardInterrupt:
+    GPIO.cleanup()`,
+      usage: 'Connect SDA(8), SCK(11), MOSI(10), MISO(9), GND(6), RST(15) to respective GPIO pins.'
+    },
+    {
+      name: 'Accelerometer (MPU6050)',
+      type: 'Motion',
+      description: '6-axis motion sensor with accelerometer and gyroscope. Detects movement and rotation.',
+      workingPrinciple: 'Capacitive MEMS sensors measure acceleration and angular velocity in 3 axes.',
+      code: `from mpu6050 import mpu6050
+import time
+
+sensor = mpu6050(0x68)
+
+while True:
+    accel_data = sensor.get_accel_data()
+    gyro_data = sensor.get_gyro_data()
+    temp = sensor.get_temp()
+    
+    print(f'Acceleration (X,Y,Z): {accel_data}')
+    print(f'Gyroscope (X,Y,Z): {gyro_data}')
+    print(f'Temperature: {temp}°C')
+    time.sleep(1)`,
+      usage: 'I2C address 0x68. Used in drones, robotics, motion tracking, and gaming controllers.'
+    },
+    {
+      name: 'Sound Sensor (KY-037)',
+      type: 'Detection',
+      description: 'Detects sound and noise levels. Digital and analog outputs available.',
+      workingPrinciple: 'Condenser microphone converts sound waves into electrical signals. Comparator outputs digital signal.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+SOUND_PIN = 25
+DIGITAL_PIN = 27
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(SOUND_PIN, GPIO.IN)
+GPIO.setup(DIGITAL_PIN, GPIO.IN)
+
+while True:
+    if GPIO.input(DIGITAL_PIN) == GPIO.HIGH:
+        print('🔊 Sound detected!')
+    time.sleep(0.1)`,
+      usage: 'Analog output to ADC, digital output to GPIO. Sensitivity adjustable via potentiometer.'
+    },
+    {
+      name: 'Water Level Sensor',
+      type: 'Detection',
+      description: 'Detects water presence and level. Uses capacitive or float-based detection.',
+      workingPrinciple: 'Capacitive sensor changes capacitance when water is present, detected by analog input.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+WATER_PIN = 18
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(WATER_PIN, GPIO.IN)
+
+try:
+    while True:
+        if GPIO.input(WATER_PIN) == GPIO.LOW:
+            print('💧 Water detected!')
+        else:
+            print('No water')
+        time.sleep(1)
+except KeyboardInterrupt:
+    GPIO.cleanup()`,
+      usage: 'Connect to GPIO 18. Works with analog ADC for precise water level measurement.'
+    },
+    {
+      name: 'Air Quality Sensor (MQ-135)',
+      type: 'Environmental',
+      description: 'Detects air quality and hazardous gases. Measures CO2, ammonia, benzene levels.',
+      workingPrinciple: 'Metal oxide semiconductor changes resistance based on gas concentration in air.',
+      code: `import board
+import busio
+import analogio
+import time
+
+# Using analog input
+adc = analogio.AnalogIn(board.A0)
+
+def get_ppm():
+    raw = adc.value
+    voltage = raw / 65535 * 3.3
+    # Calibration curve
+    ppm = (voltage / 3.3) * 100
+    return ppm
+
+while True:
+    ppm = get_ppm()
+    quality = 'GOOD' if ppm < 50 else 'POOR'
+    print(f'Air Quality: {ppm:.1f} ppm - {quality}')
+    time.sleep(2)`,
+      usage: 'Requires ADC converter. Pre-heat for 5 minutes. Needs frequent calibration.'
+    },
+    {
+      name: 'Vibration Sensor (SW-420)',
+      type: 'Detection',
+      description: 'Detects vibrations and shock. Used in alarm systems and machinery monitoring.',
+      workingPrinciple: 'Spring and ball trigger switch when vibration exceeds threshold.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+VIBRATION_PIN = 16
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(VIBRATION_PIN, GPIO.IN)
+
+while True:
+    if GPIO.input(VIBRATION_PIN) == GPIO.HIGH:
+        print('⚡ Vibration detected!')
+    time.sleep(0.5)`,
+      usage: 'Connect to GPIO 16. Adjust sensitivity with potentiometer. Low power consumption.'
+    },
+    {
+      name: 'Rotary Encoder',
+      type: 'Input',
+      description: 'Incremental rotary encoder for position and rotation measurement.',
+      workingPrinciple: 'Optical or mechanical encoder generates pulses on rotation. Count pulses to determine angle.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+CLK = 17
+DT = 27
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(CLK, GPIO.IN)
+GPIO.setup(DT, GPIO.IN)
+
+counter = 0
+clk_last_state = GPIO.input(CLK)
+
+while True:
+    clk_state = GPIO.input(CLK)
+    
+    if clk_state != clk_last_state:
+        if GPIO.input(DT) != clk_state:
+            counter += 1
+        else:
+            counter -= 1
+        print(f'Position: {counter}')
+    
+    clk_last_state = clk_state
+    time.sleep(0.01)`,
+      usage: 'Connect CLK to GPIO 17, DT to GPIO 27. Used in volume control and menu navigation.'
+    },
+    {
+      name: 'Temperature Sensor (DS18B20)',
+      type: 'Environmental',
+      description: 'One-wire digital thermometer with high precision. Range: -55°C to +125°C.',
+      workingPrinciple: 'Digital sensor communicates via one-wire protocol. Measures temperature in 0.5°C increments.',
+      code: `import os
+import glob
+import time
+
+base_dir = '/sys/bus/w1/devices/'
+device_folder = glob.glob(base_dir + '28*')[0]
+device_file = device_folder + '/w1_slave'
+
+def read_temp():
+    with open(device_file, 'r') as f:
+        lines = f.readlines()
+    
+    if lines[0].strip()[-3:] == 'YES':
+        temp_pos = lines[1].find('t=')
+        temp_raw = lines[1][temp_pos+2:]
+        temp_c = float(temp_raw) / 1000.0
+        return temp_c
+    return None
+
+while True:
+    temp = read_temp()
+    if temp:
+        print(f'Temperature: {temp}°C')
+    time.sleep(1)`,
+      usage: 'One-wire protocol, requires pull-up resistor. Can chain multiple sensors on same wire.'
+    },
+    {
+      name: 'Capacitive Touch Sensor',
+      type: 'Input',
+      description: 'Detects touch without mechanical button. Responsive and durable.',
+      workingPrinciple: 'Capacitive coupling detects changes in capacitance when human touches the sensor.',
+      code: `import board
+import busio
+import adafruit_mpr121
+
+i2c = busio.I2C(board.SCL, board.SDA)
+mpr121 = adafruit_mpr121.Adafruit_MPR121(i2c)
+
+while True:
+    for i in range(12):
+        if mpr121.touched_pins[i]:
+            print(f'Touch detected on pin {i}')
+    time.sleep(0.1)`,
+      usage: 'I2C interface. Supports 12 touch inputs. Great for digital pianos and control panels.'
+    },
+    {
+      name: 'Compass Sensor (HMC5883L)',
+      type: 'Navigation',
+      description: 'Three-axis digital magnetometer. Points to magnetic north for navigation.',
+      workingPrinciple: 'Detects magnetic field in three axes. Calculates heading angle using magnetic declination.',
+      code: `import board
+import busio
+import adafruit_hmc5883l
+
+i2c = busio.I2C(board.SCL, board.SDA)
+sensor = adafruit_hmc5883l.HMC5883L(i2c)
+
+def get_heading():
+    mag_x, mag_y, mag_z = sensor.magnetic
+    heading = math.atan2(mag_y, mag_x) * (180 / math.pi)
+    if heading < 0:
+        heading += 360
+    return heading
+
+while True:
+    heading = get_heading()
+    print(f'Heading: {heading}°')
+    time.sleep(1)`,
+      usage: 'I2C address 0x1E. Requires magnetic declination calibration. Sensitive to magnetic interference.'
+    },
+    {
+      name: 'Current Sensor (ACS712)',
+      type: 'Measurement',
+      description: 'Measures AC or DC current flow. Non-intrusive current measurement.',
+      workingPrinciple: 'Uses Hall Effect to measure magnetic field created by current flow through conductor.',
+      code: `import board
+import busio
+import analogio
+
+adc = analogio.AnalogIn(board.A0)
+SENSITIVITY = 0.185  # 185mV per A
+
+def read_current():
+    voltage = adc.value / 65535 * 3.3
+    # 2.5V is zero current (bias)
+    current = (voltage - 2.5) / SENSITIVITY
+    return abs(current)
+
+while True:
+    current = read_current()
+    power = current * 5  # Assuming 5V load
+    print(f'Current: {current:.2f}A, Power: {power:.2f}W')
+    time.sleep(0.5)`,
+      usage: 'Connect to ADC pin. Rated models: 5A, 20A, 30A. Non-invasive current measurement.'
+    },
+    {
+      name: 'Laser Distance Sensor (VL53L0X)',
+      type: 'Distance',
+      description: 'Time-of-flight laser sensor. Precise distance measurement up to 2 meters.',
+      workingPrinciple: 'Emits laser pulse and measures time to receive reflected signal. Calculates distance using light speed.',
+      code: `import board
+import busio
+import adafruit_vl53l0x
+
+i2c = busio.I2C(board.SCL, board.SDA)
+sensor = adafruit_vl53l0x.VL53L0X(i2c)
+
+while True:
+    distance = sensor.range
+    print(f'Distance: {distance}mm')
+    if distance < 200:
+        print('⚠️ Object very close!')
+    time.sleep(0.5)`,
+      usage: 'I2C interface. Faster and more accurate than ultrasonic. Range: 30-2000mm.'
+    }
+  ];
+
+  const robots = [
+    {
+      name: 'Autonomous Line Following Robot',
+      description: 'A robot that automatically detects and follows a black line on white surface using IR sensors.',
+      details: 'Uses 5 IR sensors in array configuration. PID algorithm maintains center alignment with line. Speed control via PWM to motors.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+# Motor pins
+LEFT_MOTOR_FWD = 17
+LEFT_MOTOR_BWD = 27
+RIGHT_MOTOR_FWD = 23
+RIGHT_MOTOR_BWD = 24
+
+# Sensor pins
+SENSORS = [26, 19, 13, 6, 5]  # Left to Right
+
+GPIO.setmode(GPIO.BCM)
+for pin in [LEFT_MOTOR_FWD, LEFT_MOTOR_BWD, RIGHT_MOTOR_FWD, RIGHT_MOTOR_BWD] + SENSORS:
+    GPIO.setup(pin, GPIO.IN if pin in SENSORS else GPIO.OUT)
+
+# PWM for speed control
+pwm_left = GPIO.PWM(LEFT_MOTOR_FWD, 100)
+pwm_right = GPIO.PWM(RIGHT_MOTOR_FWD, 100)
+
+def read_sensors():
+    return [GPIO.input(s) for s in SENSORS]
+
+def move_motor(fwd, bwd, speed):
+    GPIO.output(bwd, GPIO.LOW)
+    GPIO.output(fwd, GPIO.HIGH)
+
+# PID parameters
+Kp, Ki, Kd = 0.5, 0.1, 0.05
+error_sum = 0
+last_error = 0
+
+while True:
+    sensors = read_sensors()
+    # 0=black, 1=white
+    error = (sensors[0]*2 + sensors[1] - sensors[3] - sensors[4]*2)
+    
+    error_sum += error
+    derivative = error - last_error
+    
+    correction = Kp*error + Ki*error_sum + Kd*derivative
+    
+    left_speed = 100 - correction
+    right_speed = 100 + correction
+    
+    pwm_left.ChangeDutyCycle(max(0, min(100, left_speed)))
+    pwm_right.ChangeDutyCycle(max(0, min(100, right_speed)))
+    
+    last_error = error
+    time.sleep(0.01)`,
+      use: 'Industrial sorting, warehouse automation, educational robotics'
+    },
+    {
+      name: 'Obstacle Avoiding Robot',
+      description: 'Mobile robot that detects obstacles using ultrasonic sensor and autonomously navigates around them.',
+      details: 'Uses HC-SR04 ultrasonic sensor mounted on servo motor. Scans left, center, right for optimal path. Motor control for 4WD movement.',
+      code: `import RPi.GPIO as GPIO
+import time
+
+# Ultrasonic
+TRIG, ECHO = 23, 24
+# Motor control
+IN1, IN2, IN3, IN4 = 17, 27, 22, 26
+EN1, EN2 = 5, 6
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup([TRIG, IN1, IN2, IN3, IN4, EN1, EN2], GPIO.OUT)
+GPIO.setup(ECHO, GPIO.IN)
+
+pwm1 = GPIO.PWM(EN1, 100)
+pwm2 = GPIO.PWM(EN2, 100)
+pwm1.start(75)
+pwm2.start(75)
+
+def distance():
+    GPIO.output(TRIG, GPIO.HIGH)
+    time.sleep(0.00001)
+    GPIO.output(TRIG, GPIO.LOW)
+    
+    while GPIO.input(ECHO) == 0:
+        pass
+    start = time.time()
+    while GPIO.input(ECHO) == 1:
+        pass
+    return (time.time() - start) * 17150
+
+def forward():
+    GPIO.output([IN1, IN3], GPIO.HIGH)
+    GPIO.output([IN2, IN4], GPIO.LOW)
+
+def backward():
+    GPIO.output([IN1, IN3], GPIO.LOW)
+    GPIO.output([IN2, IN4], GPIO.HIGH)
+
+def left():
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN3, GPIO.HIGH)
+
+def right():
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.LOW)
+
+while True:
+    d = distance()
+    if d > 20:
+        forward()
+    else:
+        backward()
+        time.sleep(0.5)
+        left()
+        time.sleep(0.5)
+    time.sleep(0.1)`,
+      use: 'Delivery robots, vacuum cleaners, exploration robots'
+    },
+    {
+      name: 'Robotic Arm with AI Grip Control',
+      description: 'Multi-joint robotic arm with computer vision for object detection and intelligent grasping.',
+      details: 'Uses servo motors for 4 DOF control. OpenCV detects objects. Machine learning predicts grip strength needed.',
+      code: `import cv2
+import numpy as np
+import RPi.GPIO as GPIO
+from tensorflow import keras
+import time
+
+GPIO.setmode(GPIO.BCM)
+
+# Servo control pins
+SERVO_BASE = 17
+SERVO_SHOULDER = 27
+SERVO_ELBOW = 23
+SERVO_GRIPPER = 24
+
+for pin in [SERVO_BASE, SERVO_SHOULDER, SERVO_ELBOW, SERVO_GRIPPER]:
+    GPIO.setup(pin, GPIO.OUT)
+
+servo_pwm = {pin: GPIO.PWM(pin, 50) for pin in [17, 27, 23, 24]}
+for pwm in servo_pwm.values():
+    pwm.start(0)
+
+# Load ML model for grip prediction
+grip_model = keras.models.load_model('grip_model.h5')
+cap = cv2.VideoCapture(0)
+
+def set_servo_angle(pin, angle):
+    # Angle 0-180 to PWM 5-10
+    duty = 5 + (angle / 180) * 5
+    servo_pwm[pin].ChangeDutyCycle(duty)
+
+def detect_object(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    contours, _ = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest)
+        return x, y, w, h
+    return None
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        continue
+    
+    obj = detect_object(frame)
+    if obj:
+        x, y, w, h = obj
+        # Predict grip strength
+        features = np.array([[w, h, x, y]])
+        grip_force = grip_model.predict(features)[0][0]
+        
+        # Move arm to object
+        set_servo_angle(SERVO_BASE, 90)
+        set_servo_angle(SERVO_SHOULDER, 60)
+        set_servo_angle(SERVO_ELBOW, 90)
+        time.sleep(1)
+        
+        # Apply grip
+        set_servo_angle(SERVO_GRIPPER, int(grip_force * 180))
+        time.sleep(0.5)
+    
+    time.sleep(0.1)`,
+      use: 'Manufacturing automation, pick-and-place systems, medical robotics'
+    },
+    {
+      name: 'Drone Quadcopter with Flight Control',
+      description: 'Self-stabilizing quadcopter with gyroscope-based flight control and remote wireless operation.',
+      details: '4 brushless motors with ESC. IMU fusion for stability. PID controller for altitude and orientation.',
+      code: `import math
+import time
+from mpu6050 import mpu6050
+from ibus import IBus  # RC receiver
+import RPi.GPIO as GPIO
+
+GPIO.setmode(GPIO.BCM)
+
+# Motor control
+MOTOR_PINS = [17, 27, 23, 24]
+for pin in MOTOR_PINS:
+    GPIO.setup(pin, GPIO.OUT)
+
+pwm_motors = [GPIO.PWM(pin, 490) for pin in MOTOR_PINS]
+for pwm in pwm_motors:
+    pwm.start(0)
+
+# IMU
+imu = mpu6050(0x68)
+
+# RC Receiver
+ibus = IBus()
+
+class PIDController:
+    def __init__(self, kp, ki, kd):
+        self.kp, self.ki, self.kd = kp, ki, kd
+        self.integral = 0
+        self.last_error = 0
+    
+    def update(self, setpoint, measured):
+        error = setpoint - measured
+        self.integral += error
+        derivative = error - self.last_error
+        self.last_error = error
+        return self.kp*error + self.ki*self.integral + self.kd*derivative
+
+# PID controllers
+pid_roll = PIDController(1.2, 0.1, 0.8)
+pid_pitch = PIDController(1.2, 0.1, 0.8)
+pid_yaw = PIDController(1.5, 0.05, 0.4)
+pid_throttle = PIDController(2.0, 0.2, 1.0)
+
+def set_motor_speed(motor_id, speed):
+    speed = max(0, min(100, speed))
+    pwm_motors[motor_id].ChangeDutyCycle(speed)
+
+while True:
+    # Get IMU data
+    accel = imu.get_accel_data()
+    gyro = imu.get_gyro_data()
+    
+    # Calculate angles
+    roll = math.atan2(accel['y'], accel['z']) * 180/math.pi
+    pitch = math.atan2(accel['x'], accel['z']) * 180/math.pi
+    
+    # Get RC input
+    rc_data = ibus.readChannels()
+    throttle = rc_data[2] / 2000 * 100  # 0-100%
+    yaw_cmd = rc_data[3]
+    
+    # Calculate motor speeds
+    roll_correction = pid_roll.update(0, roll)
+    pitch_correction = pid_pitch.update(0, pitch)
+    yaw_correction = pid_yaw.update(0, gyro['z'])
+    throttle_correction = pid_throttle.update(throttle, 50)
+    
+    # Motor mixing (X configuration)
+    m1 = throttle + pitch_correction + roll_correction - yaw_correction
+    m2 = throttle + pitch_correction - roll_correction + yaw_correction
+    m3 = throttle - pitch_correction - roll_correction - yaw_correction
+    m4 = throttle - pitch_correction + roll_correction + yaw_correction
+    
+    for i, speed in enumerate([m1, m2, m3, m4]):
+        set_motor_speed(i, speed)
+    
+    time.sleep(0.01)`,
+      use: 'Aerial photography, surveillance, research, entertainment'
+    },
+    {
+      name: 'Autonomous Lawn Mower',
+      description: 'GPS-guided robotic lawn mower with automatic route planning and obstacle detection.',
+      details: 'Uses GPS module for positioning. Creates grid pattern cutting path. Blade motor control and safety sensors.',
+      code: `import gps
+import time
+import threading
+import RPi.GPIO as GPIO
+from geopy.distance import geodesic
+
+GPIO.setmode(GPIO.BCM)
+
+# Blade and motor control
+BLADE_PIN = 17
+MOTOR_LEFT = 27
+MOTOR_RIGHT = 23
+
+GPIO.setup([BLADE_PIN, MOTOR_LEFT, MOTOR_RIGHT], GPIO.OUT)
+
+blade_pwm = GPIO.PWM(BLADE_PIN, 1000)
+motor_pwm_left = GPIO.PWM(MOTOR_LEFT, 100)
+motor_pwm_right = GPIO.PWM(MOTOR_RIGHT, 100)
+
+# Start PWM
+blade_pwm.start(0)
+motor_pwm_left.start(0)
+motor_pwm_right.start(0)
+
+# GPS setup
+session = gps.gpsmd(mode=gps.WATCH_ENABLE|gps.WATCH_NEWSTYLE)
+
+# Define lawn area as polygon
+lawn_boundary = [
+    (40.7128, -74.0060),  # Top-left
+    (40.7130, -74.0060),  # Top-right
+    (40.7130, -74.0058),  # Bottom-right
+    (40.7128, -74.0058),  # Bottom-left
+]
+
+# Generate cutting path
+def generate_path(boundary, spacing=0.0001):
+    min_lat = min([p[0] for p in boundary])
+    max_lat = max([p[0] for p in boundary])
+    path = []
+    current_lat = min_lat
+    direction = 1
+    
+    while current_lat < max_lat:
+        if direction == 1:
+            path.append((current_lat, min([p[1] for p in boundary])))
+            path.append((current_lat, max([p[1] for p in boundary])))
+        else:
+            path.append((current_lat, max([p[1] for p in boundary])))
+            path.append((current_lat, min([p[1] for p in boundary])))
+        
+        current_lat += spacing
+        direction *= -1
+    
+    return path
+
+path = generate_path(lawn_boundary)
+current_target = 0
+
+def get_heading_to_target(current_pos, target_pos):
+    lat1, lon1 = current_pos
+    lat2, lon2 = target_pos
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    heading = (math.atan2(dlon, dlat) * 180/math.pi) % 360
+    return heading
+
+while True:
+    # Get GPS position
+    try:
+        if session.read():
+            if hasattr(session.fix, 'latitude'):
+                current_pos = (session.fix.latitude, session.fix.longitude)
+                
+                if current_target < len(path):
+                    target = path[current_target]
+                    distance = geodesic(current_pos, target).meters
+                    
+                    if distance < 1:  # Reached waypoint
+                        current_target += 1
+                    else:
+                        heading = get_heading_to_target(current_pos, target)
+                        # Move towards target
+                        motor_pwm_left.ChangeDutyCycle(70)
+                        motor_pwm_right.ChangeDutyCycle(70)
+                        
+                        # Turn if needed
+                        if heading > 180:
+                            motor_pwm_left.ChangeDutyCycle(50)
+                else:
+                    # Mowing complete
+                    motor_pwm_left.ChangeDutyCycle(0)
+                    motor_pwm_right.ChangeDutyCycle(0)
+                    blade_pwm.ChangeDutyCycle(0)
+    except:
+        pass
+    
+    time.sleep(1)`,
+      use: 'Home automation, commercial landscaping, large area maintenance'
+    },
+    {
+      name: 'Social Robot with Facial Recognition',
+      description: 'Interactive humanoid robot with emotion recognition and natural conversation abilities.',
+      details: 'Uses OpenCV for face detection. TensorFlow for emotion classification. Text-to-speech and speech recognition.',
+      code: `import cv2
+import numpy as np
+from tensorflow.keras.models import load_model
+import pyttsx3
+from googlespeech import speech_recognition as sr
+import RPi.GPIO as GPIO
+
+# Load models
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+emotion_model = load_model('emotion_model.h5')
+emotion_labels = ['Angry', 'Disgusted', 'Fearful', 'Happy', 'Neutral', 'Sad', 'Surprised']
+
+# Text-to-speech
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)
+
+# Servo control for head movements
+GPIO.setmode(GPIO.BCM)
+SERVO_HEAD_X = 17
+SERVO_HEAD_Y = 27
+GPIO.setup([SERVO_HEAD_X, SERVO_HEAD_Y], GPIO.OUT)
+
+head_pwm_x = GPIO.PWM(SERVO_HEAD_X, 50)
+head_pwm_y = GPIO.PWM(SERVO_HEAD_Y, 50)
+head_pwm_x.start(7.5)  # Center
+head_pwm_y.start(7.5)
+
+recognizer = sr.Recognizer()
+mic = sr.Microphone()
+
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+
+def listen():
+    with mic as source:
+        audio = recognizer.listen(source)
+    try:
+        return recognizer.recognize_google(audio)
+    except:
+        return "Sorry, I didn't catch that"
+
+def move_head_to_face(x, y, w, h, frame_w, frame_h):
+    face_center_x = x + w // 2
+    face_center_y = y + h // 2
+    
+    # Map face position to servo angles
+    angle_x = 7.5 + (face_center_x - frame_w/2) / frame_w * 5
+    angle_y = 7.5 - (face_center_y - frame_h/2) / frame_h * 5
+    
+    head_pwm_x.ChangeDutyCycle(angle_x)
+    head_pwm_y.ChangeDutyCycle(angle_y)
+
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    
+    for (x, y, w, h) in faces:
+        # Move head towards face
+        move_head_to_face(x, y, w, h, frame.shape[1], frame.shape[0])
+        
+        # Recognize emotion
+        face_roi = cv2.resize(gray[y:y+h, x:x+w], (48, 48))
+        face_roi = np.expand_dims(face_roi, -1) / 255.0
+        emotion_pred = emotion_model.predict(np.expand_dims(face_roi, 0))
+        emotion = emotion_labels[np.argmax(emotion_pred)]
+        
+        # Respond to emotion
+        if emotion == 'Happy':
+            speak("I see you're happy! That makes me happy too!")
+        elif emotion == 'Sad':
+            speak("You look sad. How can I help?")
+        
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+        cv2.putText(frame, emotion, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+    
+    cv2.imshow('Robot Vision', frame)
+    
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()`,
+      use: 'Healthcare assistance, elder care, educational tutoring, customer service'
+    },
+    {
+      name: 'Robotic Dog with AI Navigation',
+      description: 'Quadruped robot with SLAM-based navigation and machine learning for adaptive locomotion.',
+      details: 'Four servo motors per leg for flexible movement. LIDAR for mapping. Reinforcement learning for gait optimization.',
+      code: `import math
+import numpy as np
+import time
+from mpu6050 import mpu6050
+import RPi.GPIO as GPIO
+
+GPIO.setmode(GPIO.BCM)
+
+# Leg servo pins (4 legs, 3 servos per leg)
+LEGS = {
+    'front_left': [17, 27, 23],
+    'front_right': [24, 25, 26],
+    'back_left': [5, 6, 12],
+    'back_right': [13, 19, 20]
+}
+
+pwm_servos = {}
+for leg, pins in LEGS.items():
+    GPIO.setup(pins, GPIO.OUT)
+    pwm_servos[leg] = [GPIO.PWM(pin, 50) for pin in pins]
+    for pwm in pwm_servos[leg]:
+        pwm.start(0)
+
+imu = mpu6050(0x68)
+
+class LegController:
+    def __init__(self, leg_id):
+        self.leg_id = leg_id
+        self.position = np.array([0, 0, 0])
+        self.angles = [90, 90, 90]  # hip, knee, ankle
+    
+    def inverse_kinematics(self, target_pos, L1=5, L2=5, L3=5):
+        x, y, z = target_pos
+        
+        # Simple 3-DOF IK
+        r = math.sqrt(x**2 + y**2)
+        alpha = math.atan2(z, r)
+        
+        c3 = (r**2 + z**2 - L1**2 - L2**2) / (2*L1*L2)
+        c3 = max(-1, min(1, c3))
+        angle3 = math.acos(c3)
+        
+        angle2 = math.atan2(z, r) - math.atan2(L2*math.sin(angle3), L1+L2*math.cos(angle3))
+        angle1 = math.atan2(y, x)
+        
+        self.angles = [
+            math.degrees(angle1) + 90,
+            math.degrees(angle2) + 90,
+            math.degrees(angle3) + 90
+        ]
+    
+    def set_position(self, x, y, z):
+        self.position = np.array([x, y, z])
+        self.inverse_kinematics(self.position)
+        
+        for i, angle in enumerate(self.angles):
+            duty = 5 + (angle / 180) * 5
+            pwm_servos[self.leg_id][i].ChangeDutyCycle(duty)
+
+# Gait generator
+def trot_gait(phase, amplitude=5):
+    gaits = {}
+    for leg_id in LEGS.keys():
+        if 'front' in leg_id and 'left' in leg_id:
+            t = phase
+        elif 'back' in leg_id and 'right' in leg_id:
+            t = phase
+        else:
+            t = (phase + 0.5) % 1
+        
+        # Sinusoidal motion
+        x = amplitude * math.sin(2 * math.pi * t)
+        z = amplitude * (1 - math.cos(2 * math.pi * t)) / 2
+        
+        gaits[leg_id] = (x, 0, -z)
+    
+    return gaits
+
+leg_controllers = {leg: LegController(leg) for leg in LEGS.keys()}
+phase = 0
+speed = 0.5
+
+while True:
+    # Get IMU data
+    accel = imu.get_accel_data()
+    
+    # Generate gait
+    gait = trot_gait(phase, amplitude=3)
+    
+    # Apply gait
+    for leg, (x, y, z) in gait.items():
+        leg_controllers[leg].set_position(x, y, z)
+    
+    phase += speed * 0.01
+    phase = phase % 1
+    
+    time.sleep(0.01)`,
+      use: 'Search and rescue, exploration, entertainment, research'
+    },
+    {
+      name: 'Industrial Robot Welder',
+      description: 'Multi-axis industrial robot arm with precise welding torch control and quality assurance.',
+      details: 'Uses stepper motors for exact positioning. Current sensor for weld monitoring. Vision system for seam detection.',
+      code: `import time
+import RPi.GPIO as GPIO
+import cv2
+import numpy as np
+
+GPIO.setmode(GPIO.BCM)
+
+# Stepper motor pins (NEMA23)
+STEPPERS = {
+    'base': {'step': 17, 'dir': 27},
+    'shoulder': {'step': 23, 'dir': 24},
+    'elbow': {'step': 25, 'dir': 26},
+    'wrist': {'step': 5, 'dir': 6}
+}
+
+# Welding torch
+TORCH_POWER = 12
+TORCH_SWITCH = 13
+
+GPIO.setup(list(set([v['step'] for v in STEPPERS.values()] + [v['dir'] for v in STEPPERS.values()] + [TORCH_POWER, TORCH_SWITCH])), GPIO.OUT)
+
+class StepperMotor:
+    def __init__(self, step_pin, dir_pin, spr=200):
+        self.step_pin = step_pin
+        self.dir_pin = dir_pin
+        self.spr = spr
+        self.position = 0
+    
+    def move(self, steps, delay=0.005):
+        direction = 1 if steps > 0 else 0
+        GPIO.output(self.dir_pin, direction)
+        
+        for _ in range(abs(steps)):
+            GPIO.output(self.step_pin, GPIO.HIGH)
+            time.sleep(delay / 2)
+            GPIO.output(self.step_pin, GPIO.LOW)
+            time.sleep(delay / 2)
+        
+        self.position += steps
+
+steppers = {name: StepperMotor(pins['step'], pins['dir']) for name, pins in STEPPERS.items()}
+
+def detect_weld_seam(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 100, 200)
+    lines = cv2.HoughLines(edges, 1, np.pi/180, 100)
+    
+    if lines is not None:
+        line = lines[0][0]
+        rho, theta = line
+        return theta, rho
+    return None, None
+
+def weld_seam(seam_theta, seam_rho, speed=0.01):
+    # Move arm to follow seam
+    # Simple linear motion along seam
+    for i in range(100):
+        # Calculate position adjustment
+        angle_adjust = (seam_theta - np.pi/2) * 180
+        
+        steppers['base'].move(int(angle_adjust / 10), delay=speed)
+        
+        time.sleep(speed)
+
+# Vision
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # Detect seam
+    theta, rho = detect_weld_seam(frame)
+    
+    if theta is not None:
+        # Position torch
+        for stepper in steppers.values():
+            stepper.move(10, delay=0.01)
+        
+        # Start welding
+        GPIO.output(TORCH_SWITCH, GPIO.HIGH)
+        GPIO.output(TORCH_POWER, GPIO.HIGH)
+        
+        # Weld along seam
+        weld_seam(theta, rho)
+        
+        # End welding
+        GPIO.output(TORCH_SWITCH, GPIO.LOW)
+        GPIO.output(TORCH_POWER, GPIO.LOW)
+    
+    cv2.imshow('Welding Vision', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()`,
+      use: 'Automotive manufacturing, shipbuilding, heavy machinery assembly'
+    },
+    {
+      name: 'Humanoid Robot with Voice Control',
+      description: 'Human-like robot with 20+ servo motors for natural movement and real-time voice command processing.',
+      details: 'Full-body articulation with hands. Natural language processing. Emotion simulation through movement.',
+      code: `import speech_recognition as sr
+from pyttsx3 import init as tts_init
+import RPi.GPIO as GPIO
+import time
+import numpy as np
+
+GPIO.setmode(GPIO.BCM)
+
+# Robot servo pins (20 DOF)
+SERVO_PINS = {
+    'left_shoulder': 17, 'right_shoulder': 27,
+    'left_elbow': 23, 'right_elbow': 24,
+    'left_wrist': 25, 'right_wrist': 26,
+    'left_hip': 5, 'right_hip': 6,
+    'left_knee': 12, 'right_knee': 13,
+    'left_ankle': 19, 'right_ankle': 20,
+    'neck_yaw': 21, 'neck_pitch': 22,
+    'head_tilt': 26, 'torso': 27,
+    'left_finger1': 2, 'left_finger2': 3,
+    'right_finger1': 4, 'right_finger2': 8
+}
+
+GPIO.setup(list(SERVO_PINS.values()), GPIO.OUT)
+servo_pwm = {name: GPIO.PWM(pin, 50) for name, pin in SERVO_PINS.items()}
+for pwm in servo_pwm.values():
+    pwm.start(0)
+
+recognizer = sr.Recognizer()
+mic = sr.Microphone()
+engine = tts_init()
+
+def listen_command():
+    with mic as source:
+        audio = recognizer.listen(source, timeout=5)
+    try:
+        command = recognizer.recognize_google(audio).lower()
+        return command
+    except:
+        return None
+
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+
+def set_servo(servo_name, angle):
+    duty = 5 + (angle / 180) * 5
+    duty = max(2.5, min(12.5, duty))
+    servo_pwm[servo_name].ChangeDutyCycle(duty)
+
+def gesture_wave():
+    for i in range(3):
+        set_servo('right_shoulder', 90)
+        set_servo('right_elbow', 45)
+        for j in range(0, 90, 5):
+            set_servo('right_wrist', j)
+            time.sleep(0.05)
+        for j in range(90, 0, -5):
+            set_servo('right_wrist', j)
+            time.sleep(0.05)
+
+def gesture_nod():
+    for i in range(2):
+        set_servo('neck_pitch', 30)
+        time.sleep(0.3)
+        set_servo('neck_pitch', -30)
+        time.sleep(0.3)
+    set_servo('neck_pitch', 0)
+
+def gesture_point(direction):
+    if direction == 'left':
+        set_servo('left_shoulder', 45)
+        set_servo('left_elbow', 0)
+    elif direction == 'right':
+        set_servo('right_shoulder', 135)
+        set_servo('right_elbow', 180)
+
+# Main control loop
+while True:
+    command = listen_command()
+    
+    if command:
+        if 'hello' in command:
+            gesture_wave()
+            speak('Hello! How can I help?')
+        
+        elif 'yes' in command:
+            gesture_nod()
+            speak('Great!')
+        
+        elif 'point left' in command:
+            gesture_point('left')
+            speak('Pointing left')
+        
+        elif 'stand' in command:
+            # Stand pose
+            for servo in ['left_hip', 'right_hip', 'left_knee', 'right_knee']:
+                set_servo(servo, 90)
+            speak('I am standing')
+        
+        elif 'sit' in command:
+            # Sit pose
+            for servo in ['left_hip', 'right_hip', 'left_knee', 'right_knee']:
+                set_servo(servo, 45)
+            speak('Sitting down')`,
+      use: 'Entertainment, education, research, elderly care assistance'
+    }
+  ];
+
+  const aiProjects = [
+    {
+      name: 'RAG (Retrieval-Augmented Generation) System',
+      description: 'Combines document retrieval with AI generation for accurate, context-aware responses.',
+      concept: 'RAG retrieves relevant documents from a knowledge base, then uses them as context for generating accurate answers.',
+      code: `import os
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import RetrievalQA
+
+# Create vector database from documents
+documents_path = './documents'
+embeddings = OpenAIEmbeddings()
+
+# Load documents and create embeddings
+from langchain.document_loaders import DirectoryLoader
+loader = DirectoryLoader(documents_path)
+docs = loader.load()
+
+# Store in vector database
+vectordb = Chroma.from_documents(
+    documents=docs,
+    embedding=embeddings,
+    persist_directory='./chroma_db'
+)
+
+# Create RAG chain
+llm = ChatOpenAI(temperature=0.7, model='gpt-4')
+
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type='stuff',
+    retriever=vectordb.as_retriever(search_kwargs={'k': 3})
+)
+
+# Use the chain
+query = "How does photosynthesis work?"
+result = qa_chain.run(query)
+print(f"Answer: {result}")`,
+      keyFeatures: ['Document embedding', 'Vector database', 'Context-aware responses', 'Reduced hallucinations']
+    },
+    {
+      name: 'MCP (Model Context Protocol) Implementation',
+      description: 'Enables Claude to interact with external tools, APIs, and data sources seamlessly.',
+      concept: 'MCP provides standardized interface for Claude to call external functions and retrieve real-time data.',
+      code: `import json
+import asyncio
+from typing import Any
+import httpx
+
+class MCPServer:
+    def __init__(self):
+        self.tools = {}
+        self.register_tools()
+    
+    def register_tools(self):
+        # Register available tools
+        self.tools['get_weather'] = {
+            'description': 'Get current weather for a city',
+            'parameters': {
+                'city': 'str',
+                'units': 'str (celsius/fahrenheit)'
+            }
+        }
+        
+        self.tools['search_web'] = {
+            'description': 'Search the web for information',
+            'parameters': {
+                'query': 'str',
+                'max_results': 'int'
+            }
+        }
+    
+    async def execute_tool(self, tool_name: str, params: dict) -> Any:
+        if tool_name == 'get_weather':
+            return await self._get_weather(params['city'], params.get('units', 'celsius'))
+        elif tool_name == 'search_web':
+            return await self._search_web(params['query'], params.get('max_results', 5))
+    
+    async def _get_weather(self, city: str, units: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f'https://api.openweathermap.org/data/2.5/weather?q={city}&units={units}'
+            )
+            return response.json()
+    
+    async def _search_web(self, query: str, max_results: int):
+        # Implement web search (using search API)
+        results = []
+        # ... search implementation
+        return results[:max_results]
+    
+    async def handle_request(self, request: dict) -> dict:
+        tool_name = request.get('tool')
+        params = request.get('params', {})
+        
+        try:
+            result = await self.execute_tool(tool_name, params)
+            return {
+                'success': True,
+                'result': result
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+# Usage
+mcp = MCPServer()
+
+# Claude can now call any registered tool
+async def main():
+    weather_request = {
+        'tool': 'get_weather',
+        'params': {'city': 'London', 'units': 'celsius'}
+    }
+    result = await mcp.handle_request(weather_request)
+    print(result)
+
+asyncio.run(main())`,
+      keyFeatures: ['Tool integration', 'Real-time data access', 'Standardized interface', 'Async support']
+    },
+    {
+      name: 'Computer Vision with OpenCV & TensorFlow',
+      description: 'Advanced image processing and deep learning for object detection, segmentation, and classification.',
+      concept: 'Combines traditional CV with deep learning for robust visual understanding.',
+      code: `import cv2
+import numpy as np
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+
+# Load pre-trained model
+model = load_model('mobilenet_v2.h5')
+
+class ObjectDetector:
+    def __init__(self, model_path='yolov3.weights'):
+        self.net = cv2.dnn.readNet(model_path)
+        self.layer_names = self.net.getLayerNames()
+        self.output_layers = [self.layer_names[i-1] for i in self.net.getUnconnectedOutLayers()]
+    
+    def detect_objects(self, frame):
+        height, width, channels = frame.shape
+        
+        # Prepare blob
+        blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+        self.net.setInput(blob)
+        outs = self.net.forward(self.output_layers)
+        
+        # Extract detections
+        class_ids = []
+        confidences = []
+        boxes = []
+        
+        for out in outs:
+            for detection in out:
+                scores = detection[5:]
+                class_id = np.argmax(scores)
+                confidence = scores[class_id]
+                
+                if confidence > 0.5:
+                    center_x = int(detection[0] * width)
+                    center_y = int(detection[1] * height)
+                    w = int(detection[2] * width)
+                    h = int(detection[3] * height)
+                    
+                    x = int(center_x - w/2)
+                    y = int(center_y - h/2)
+                    
+                    boxes.append([x, y, w, h])
+                    confidences.append(float(confidence))
+                    class_ids.append(class_id)
+        
+        # Apply NMS
+        indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+        
+        return boxes, confidences, class_ids, indexes
+
+class_names = ['person', 'car', 'dog', 'cat', 'bicycle']  # COCO classes
+
+detector = ObjectDetector()
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    boxes, confidences, class_ids, indexes = detector.detect_objects(frame)
+    
+    for i in range(len(boxes)):
+        if i in indexes:
+            x, y, w, h = boxes[i]
+            label = f'{class_names[class_ids[i]]}: {confidences[i]:.2f}'
+            
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
+    cv2.imshow('Object Detection', frame)
+    
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()`,
+      keyFeatures: ['Object detection', 'Image classification', 'Semantic segmentation', 'Real-time processing']
+    },
+    {
+      name: 'Natural Language Processing with Transformer Models',
+      description: 'Uses BERT and GPT models for text analysis, sentiment analysis, and text generation.',
+      concept: 'Transformer architecture enables understanding context and generating coherent text.',
+      code: `from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+import torch
+
+# Sentiment Analysis
+sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert-base-uncased-finetuned-sst-2-english')
+
+texts = [
+    "I love this product!",
+    "This is terrible",
+    "It's okay, nothing special"
+]
+
+for text in texts:
+    result = sentiment_pipeline(text)
+    print(f"Text: {text}")
+    print(f"Sentiment: {result[0]['label']}, Score: {result[0]['score']:.2f}\\n")
+
+# Named Entity Recognition
+ner_pipeline = pipeline('ner', model='dbmdz/bert-base-multilingual-cased')
+
+sentence = "My name is John Smith and I work at Google in California"
+entities = ner_pipeline(sentence)
+
+for entity in entities:
+    print(f"{entity['word']}: {entity['entity']} (confidence: {entity['score']:.2f})")
+
+# Text Generation
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+model = GPT2LMHeadModel.from_pretrained('gpt2')
+
+prompt = "Artificial intelligence is"
+input_ids = tokenizer.encode(prompt, return_tensors='pt')
+
+output = model.generate(input_ids, max_length=100, num_beams=5, no_repeat_ngram_size=2)
+generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+
+print(f"Prompt: {prompt}")
+print(f"Generated: {generated_text}")
+
+# Question Answering
+qa_pipeline = pipeline('question-answering', model='distilbert-base-cased-distilled-squad')
+
+context = "Python is a programming language known for its simplicity and readability."
+question = "What is Python?"
+
+answer = qa_pipeline(question=question, context=context)
+print(f"Question: {question}")
+print(f"Answer: {answer['answer']}")`,
+      keyFeatures: ['Sentiment analysis', 'Named entity recognition', 'Text generation', 'Question answering']
+    },
+    {
+      name: 'Reinforcement Learning with Deep Q-Networks (DQN)',
+      description: 'Teaches AI agents to learn optimal behaviors through interaction with environment.',
+      concept: 'DQN combines Q-learning with deep neural networks to handle complex state spaces.',
+      code: `import numpy as np
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from collections import deque
+import random
+
+class DQNAgent:
+    def __init__(self, state_size, action_size):
+        self.state_size = state_size
+        self.action_size = action_size
+        
+        # Hyperparameters
+        self.epsilon = 1.0
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
+        self.learning_rate = 0.001
+        self.gamma = 0.95  # Discount factor
+        
+        # Replay memory
+        self.memory = deque(maxlen=2000)
+        
+        # Q-Network
+        self.q_network = self._build_network()
+        self.target_network = self._build_network()
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+    
+    def _build_network(self):
+        model = models.Sequential([
+            layers.Dense(128, activation='relu', input_shape=(self.state_size,)),
+            layers.Dense(128, activation='relu'),
+            layers.Dense(self.action_size, activation='linear')
+        ])
+        return model
+    
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append((state, action, reward, next_state, done))
+    
+    def act(self, state):
+        # Epsilon-greedy policy
+        if np.random.random() < self.epsilon:
+            return random.choice(range(self.action_size))
+        
+        q_values = self.q_network.predict(state.reshape(1, -1), verbose=0)
+        return np.argmax(q_values[0])
+    
+    def replay(self, batch_size):
+        if len(self.memory) < batch_size:
+            return
+        
+        minibatch = random.sample(self.memory, batch_size)
+        
+        states = np.array([x[0] for x in minibatch])
+        actions = np.array([x[1] for x in minibatch])
+        rewards = np.array([x[2] for x in minibatch])
+        next_states = np.array([x[3] for x in minibatch])
+        dones = np.array([x[4] for x in minibatch])
+        
+        # Predict Q-values
+        target = self.q_network.predict(states, verbose=0)
+        next_q = self.target_network.predict(next_states, verbose=0)
+        
+        for i in range(batch_size):
+            if dones[i]:
+                target[i][actions[i]] = rewards[i]
+            else:
+                target[i][actions[i]] = rewards[i] + self.gamma * np.max(next_q[i])
+        
+        # Train network
+        self.q_network.fit(states, target, epochs=1, verbose=0)
+        
+        # Decay epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+    
+    def update_target_network(self):
+        self.target_network.set_weights(self.q_network.get_weights())
+
+# Example usage with CartPole environment
+import gym
+
+env = gym.make('CartPole-v1')
+state_size = env.observation_space.shape[0]
+action_size = env.action_space.n
+
+agent = DQNAgent(state_size, action_size)
+episodes = 500
+batch_size = 32
+
+for episode in range(episodes):
+    state, _ = env.reset()
+    total_reward = 0
+    
+    for step in range(500):
+        action = agent.act(state)
+        next_state, reward, done, _, _ = env.step(action)
+        
+        agent.remember(state, action, reward, next_state, done)
+        agent.replay(batch_size)
+        
+        total_reward += reward
+        state = next_state
+        
+        if done:
+            break
+    
+    if episode % 10 == 0:
+        agent.update_target_network()
+        print(f"Episode: {episode}, Reward: {total_reward}, Epsilon: {agent.epsilon:.3f}")
+
+env.close()`,
+      keyFeatures: ['Deep Q-Learning', 'Experience replay', 'Epsilon-greedy exploration', 'Neural networks']
+    }
+  ];
+
+  const CodeViewer = ({ code, name }) => {
+    const [copied, setCopied] = React.useState(false);
+
+    const copyCode = () => {
+      navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="bg-slate-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-slate-800 p-4 flex justify-between items-center border-b border-slate-700">
+            <h3 className="text-white font-mono font-bold">{name}</h3>
+            <button
+              onClick={() => setExpandedCode(null)}
+              className="text-slate-400 hover:text-white"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <pre className="p-6 overflow-x-auto">
+            <code className="text-slate-300 text-sm font-mono">{code}</code>
+          </pre>
+          <div className="bg-slate-800 p-4 flex gap-3 border-t border-slate-700">
+            <button
+              onClick={copyCode}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition"
+            >
+              <Code2 size={18} />
+              {copied ? 'Copied!' : 'Copy Code'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'about':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 relative overflow-hidden">
+            {/* Animated background elements */}
+            <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-8 left-20 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+
+            {/* Header */}
+            <div className="relative z-10 px-6 py-4">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">KISHVANTH</h1>
+            </div>
+
+            {/* Main content */}
+            <div className="relative z-10 max-w-6xl mx-auto px-6 py-12">
+              <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
+                <div>
+                  <h2 className="text-5xl md:text-6xl font-black mb-6 text-white leading-tight">
+                    Full Stack Developer & AI Enthusiast
+                  </h2>
+                  <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                    Passionate about building intelligent systems with Python, data science, and machine learning. Currently pursuing excellence in Class 11 while developing real-world solutions.
+                  </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-slate-200">
+                      <Phone size={20} className="text-blue-400" />
+                      <span>+91 6374155193</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-200">
+                      <Mail size={20} className="text-blue-400" />
+                      <span>kishvanth2010kishvanth@gmail.com</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-200">
+                      <Globe size={20} className="text-blue-400" />
+                      <a href="https://bit.ly/kishvanth" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition">
+                        bit.ly/kishvanth
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl blur-2xl opacity-30"></div>
+                  <div className="relative bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
+                    <h3 className="text-2xl font-bold text-white mb-6">Core Skills</h3>
+                    <div className="space-y-3">
+                      {['Python & C++', 'Data Science (NumPy, Pandas)', 'Machine Learning', 'PostgreSQL', 'GUI Development'].map((skill, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-300 rounded-full"></div>
+                          <span className="text-slate-200">{skill}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Links */}
+              <div className="flex gap-6 justify-center md:justify-start mb-16">
+                <a href="https://www.linkedin.com/in/kishvanth-kishvanth-8158673a0" target="_blank" rel="noopener noreferrer" className="p-4 bg-slate-800 hover:bg-blue-600 rounded-lg transition text-slate-300 hover:text-white">
+                  <Linkedin size={24} />
+                </a>
+                <a href="mailto:kishvanth2010kishvanth@gmail.com" className="p-4 bg-slate-800 hover:bg-blue-600 rounded-lg transition text-slate-300 hover:text-white">
+                  <Mail size={24} />
+                </a>
+                <a href="https://bit.ly/kishvanth" target="_blank" rel="noopener noreferrer" className="p-4 bg-slate-800 hover:bg-blue-600 rounded-lg transition text-slate-300 hover:text-white">
+                  <Globe size={24} />
+                </a>
+              </div>
+
+              {/* Education */}
+              <div className="bg-gradient-to-r from-slate-900/50 to-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-8">
+                <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  <ChevronDown size={24} className="text-blue-400" />
+                  Education & Development
+                </h3>
+                <p className="text-slate-300 mb-4">Class 11 at Sri Jayadevi Saraswati Vidyalaya, Villupuram</p>
+                <p className="text-slate-400">Continuous learner in competitive programming, AI/ML, and full-stack development with commitment to building practical skills.</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'sensors':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-950 relative">
+            <div className="absolute top-0 left-0 w-96 h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+            <div className="relative z-10 px-6 py-4">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">KISHVANTH</h1>
+            </div>
+
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+              <h2 className="text-5xl font-black text-white mb-4">IoT Sensors & Components</h2>
+              <p className="text-xl text-slate-300 mb-12">Complete guide to 20+ sensors with working principles, code, and applications</p>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {sensors.map((sensor, idx) => (
+                  <div key={idx} className="group bg-slate-900/50 backdrop-blur-sm border border-slate-700 hover:border-emerald-500 rounded-xl p-6 transition hover:shadow-lg hover:shadow-emerald-500/20">
+                    <div className="mb-4">
+                      <span className="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-sm font-semibold mb-2">{sensor.type}</span>
+                      <h3 className="text-2xl font-bold text-white mb-2">{sensor.name}</h3>
+                      <p className="text-slate-400">{sensor.description}</p>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <p className="text-emerald-400 font-semibold text-sm mb-1">How It Works:</p>
+                        <p className="text-slate-300 text-sm">{sensor.workingPrinciple}</p>
+                      </div>
+                      <div>
+                        <p className="text-emerald-400 font-semibold text-sm mb-1">Usage:</p>
+                        <p className="text-slate-300 text-sm">{sensor.usage}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setExpandedCode(idx)}
+                      className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center justify-center gap-2 transition group-hover:shadow-lg group-hover:shadow-emerald-600/50"
+                    >
+                      <Code2 size={18} />
+                      View Code
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'robots':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-rose-950 to-slate-950 relative">
+            <div className="absolute top-0 left-0 w-96 h-96 bg-rose-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+            <div className="relative z-10 px-6 py-4">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-300">KISHVANTH</h1>
+            </div>
+
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+              <h2 className="text-5xl font-black text-white mb-4">Advanced Robotics Projects</h2>
+              <p className="text-xl text-slate-300 mb-12">10 complete robotic systems with full implementation details</p>
+
+              <div className="space-y-6">
+                {robots.map((robot, idx) => (
+                  <div key={idx} className="group bg-slate-900/50 backdrop-blur-sm border border-slate-700 hover:border-rose-500 rounded-xl p-8 transition hover:shadow-lg hover:shadow-rose-500/20">
+                    <div className="grid md:grid-cols-3 gap-6 items-start">
+                      <div className="md:col-span-2">
+                        <h3 className="text-3xl font-bold text-white mb-3">{robot.name}</h3>
+                        <p className="text-slate-300 mb-3 text-lg">{robot.description}</p>
+                        <div className="space-y-2">
+                          <p className="text-slate-400"><span className="text-rose-400 font-semibold">Details:</span> {robot.details}</p>
+                          <p className="text-slate-400"><span className="text-rose-400 font-semibold">Applications:</span> {robot.use}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setExpandedCode(sensors.length + idx)}
+                        className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg flex items-center justify-center gap-2 transition h-fit whitespace-nowrap"
+                      >
+                        <Code2 size={20} />
+                        View Code
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'ai':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-amber-950 to-slate-950 relative">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+            <div className="relative z-10 px-6 py-4">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-300">KISHVANTH</h1>
+            </div>
+
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+              <h2 className="text-5xl font-black text-white mb-4">Artificial Intelligence Projects</h2>
+              <p className="text-xl text-slate-300 mb-12">Advanced AI systems including RAG, MCP, Computer Vision, NLP, and Reinforcement Learning</p>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {aiProjects.map((project, idx) => (
+                  <div key={idx} className="group bg-slate-900/50 backdrop-blur-sm border border-slate-700 hover:border-amber-500 rounded-xl p-6 transition hover:shadow-lg hover:shadow-amber-500/20">
+                    <h3 className="text-2xl font-bold text-white mb-2">{project.name}</h3>
+                    <p className="text-slate-300 mb-3">{project.description}</p>
+                    <p className="text-slate-400 text-sm mb-4"><span className="text-amber-400 font-semibold">Concept:</span> {project.concept}</p>
+                    
+                    <div className="mb-4">
+                      <p className="text-amber-400 font-semibold text-sm mb-2">Key Features:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {project.keyFeatures.map((feature, i) => (
+                          <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded">
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setExpandedCode(sensors.length + robots.length + idx)}
+                      className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center justify-center gap-2 transition group-hover:shadow-lg group-hover:shadow-amber-600/50"
+                    >
+                      <Code2 size={18} />
+                      View Code
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const getCodeContent = () => {
+    const index = expandedCode;
+    if (index < sensors.length) {
+      return { code: sensors[index].code, name: sensors[index].name };
+    } else if (index < sensors.length + robots.length) {
+      return { code: robots[index - sensors.length].code, name: robots[index - sensors.length].name };
+    } else {
+      return { code: aiProjects[index - sensors.length - robots.length].code, name: aiProjects[index - sensors.length - robots.length].name };
+    }
+  };
+
+  return (
+    <div className="bg-black min-h-screen">
+      <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(20px, -50px) scale(1.1); }
+          50% { transform: translate(-20px, 20px) scale(0.9); }
+          75% { transform: translate(50px, 50px) scale(1.05); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in;
+        }
+      `}</style>
+
+      {/* Navigation */}
+      <nav className="fixed bottom-6 left-6 right-6 md:left-auto md:right-auto md:top-6 md:left-6 z-40">
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-full p-2 flex gap-2 flex-wrap justify-center md:flex-col md:w-fit">
+          {[
+            { id: 'about', label: 'About', icon: '👤' },
+            { id: 'sensors', label: 'Sensors (20+)', icon: '📡' },
+            { id: 'robots', label: 'Robots (10)', icon: '🤖' },
+            { id: 'ai', label: 'AI Projects', icon: '🧠' }
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => setCurrentPage(item.id)}
+              className={`px-4 py-2 rounded-full font-semibold transition ${
+                currentPage === item.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <span className="hidden md:inline">{item.icon} {item.label}</span>
+              <span className="md:hidden">{item.icon}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      {renderPage()}
+
+      {/* Code Viewer Modal */}
+      {expandedCode !== null && <CodeViewer {...getCodeContent()} />}
+    </div>
+  );
+};
+
+export default Portfolio;
